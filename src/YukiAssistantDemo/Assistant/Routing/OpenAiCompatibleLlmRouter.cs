@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -28,6 +28,7 @@ public sealed class OpenAiCompatibleLlmRouter(
         - supplier_spend with period current_quarter: supplier spending in the current quarter
         Use clarify with period null only when a supported job is genuinely ambiguous and include one short question.
         Use unsupported with period null for everything else.
+        For all three supported intents and for unsupported, clarification MUST be null. Only clarify may have a non-null clarification.
         The exact JSON shape is: {"intent":"...","period":"... or null","confidence":0.0,"clarification":"... or null"}.
         """;
 
@@ -64,15 +65,18 @@ public sealed class OpenAiCompatibleLlmRouter(
     {
         var userContent = invalidOutput is null
             ? message
-            : $"Return only a corrected JSON object matching the routing contract. Do not explain the correction. Previous invalid output:\n{invalidOutput[..Math.Min(invalidOutput.Length, 4000)]}";
+            : $"Return only a corrected JSON object matching the routing contract. For any non-clarify intent, clarification MUST be null. Do not explain the correction. Previous invalid output:\n{invalidOutput[..Math.Min(invalidOutput.Length, 4000)]}";
         var request = new ChatRequest(options.Model,
         [new("system", SystemPrompt), new("user", userContent)], 0);
+        var requestJson = JsonSerializer.Serialize(request, JsonOptions);
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(options.TimeoutSeconds));
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(options.BaseUrl.TrimEnd('/') + "/"), "chat/completions"))
         {
-            Content = JsonContent.Create(request, options: JsonOptions)
+            // MLX-LM's lightweight HTTP server requires Content-Length and
+            // rejects chunked request bodies with HTTP 411.
+            Content = new StringContent(requestJson, Encoding.UTF8, "application/json")
         };
         if (!string.IsNullOrWhiteSpace(options.ApiKey))
             httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);

@@ -77,6 +77,9 @@ public sealed class OpenAiCompatibleLlmRouterTests
         Assert.True(result.IsExecutable);
         Assert.Equal(RouterIntent.VatMissingItems, result.Decision!.Intent);
         Assert.Equal(1, handler.RequestCount);
+        Assert.NotNull(handler.LastContentLength);
+        Assert.Equal(Encoding.UTF8.GetByteCount(handler.LastRequest!), handler.LastContentLength);
+        Assert.Contains("clarification MUST be null", handler.LastRequest!, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("northstar-bikes-nl", handler.LastRequest!, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("12460", handler.LastRequest!, StringComparison.OrdinalIgnoreCase);
     }
@@ -123,10 +126,12 @@ public sealed class OpenAiCompatibleLlmRouterTests
         private readonly Queue<string> _responses = new(responses);
         public int RequestCount { get; private set; }
         public string? LastRequest { get; private set; }
+        public long? LastContentLength { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestCount++;
+            LastContentLength = request.Content?.Headers.ContentLength;
             LastRequest = await request.Content!.ReadAsStringAsync(cancellationToken);
             var response = _responses.Count > 0 ? _responses.Dequeue() : "not json";
             return new HttpResponseMessage(HttpStatusCode.OK)

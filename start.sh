@@ -28,12 +28,16 @@ fi
 : "${LLM_PROVIDER:=ollama}"
 : "${LLM_AUTOSTART:=false}"
 
+to_lower() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
 command -v docker >/dev/null 2>&1 || { echo 'Docker CLI is required. Install Docker Desktop and try again.' >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo 'curl is required to check local services.' >&2; exit 1; }
 docker info >/dev/null 2>&1 || { echo 'Docker Engine is not available. Start Docker Desktop and try again.' >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose is required.' >&2; exit 1; }
 
-provider="${LLM_PROVIDER,,}"
+provider="$(to_lower "$LLM_PROVIDER")"
 case "$provider" in ollama|mlx) ;; *) echo "Unsupported LLM_PROVIDER '$provider'. Use ollama or mlx." >&2; exit 1 ;; esac
 if [[ "$provider" == mlx ]]; then
   : "${LLM_BASE_URL:=http://host.docker.internal:8080/v1}"
@@ -65,7 +69,7 @@ start_command() {
     mlx_port="${LLM_BASE_URL##*:}"
     mlx_port="${mlx_port%%/*}"
     [[ "$mlx_port" =~ ^[0-9]+$ ]] || mlx_port=8080
-    printf 'python3 -m mlx_lm.server --model %s --host 0.0.0.0 --port %s' "$LLM_MODEL" "$mlx_port"
+    printf 'mlx_lm.server --model %s --host 0.0.0.0 --port %s' "$LLM_MODEL" "$mlx_port"
   fi
 }
 
@@ -96,8 +100,9 @@ wait_endpoint() {
   exit 1
 }
 
+autostart="$(to_lower "$LLM_AUTOSTART")"
 if ! endpoint_ready; then
-  if [[ "${LLM_AUTOSTART,,}" != true ]]; then
+  if [[ "$autostart" != true ]]; then
     echo "The $provider endpoint is unavailable. Start it with '$(start_command)' or set LLM_AUTOSTART=true. Expected endpoint: $LLM_BASE_URL" >&2
     exit 1
   fi
@@ -107,10 +112,10 @@ if ! endpoint_ready; then
     ollama serve >"$stdout_log_path" 2>"$stderr_log_path" &
     llm_pid=$!
   else
-    command -v python3 >/dev/null 2>&1 || { echo 'LLM_AUTOSTART=true for mlx requires python3.' >&2; exit 1; }
-    python3 -c 'import mlx_lm' >/dev/null 2>&1 || { echo 'LLM_AUTOSTART=true for mlx requires the mlx-lm package.' >&2; exit 1; }
+    mlx_server_command="$(command -v mlx_lm.server || true)"
+    [[ -n "$mlx_server_command" ]] || { echo 'LLM_AUTOSTART=true for mlx requires the mlx_lm.server command. Ensure the environment containing mlx-lm is on PATH.' >&2; exit 1; }
     mlx_port="$(python3 -c 'from urllib.parse import urlparse; import os; print(urlparse(os.environ["LLM_BASE_URL"]).port or 8080)')"
-    python3 -m mlx_lm.server --model "$LLM_MODEL" --host 0.0.0.0 --port "$mlx_port" >"$stdout_log_path" 2>"$stderr_log_path" &
+    "$mlx_server_command" --model "$LLM_MODEL" --host 0.0.0.0 --port "$mlx_port" >"$stdout_log_path" 2>"$stderr_log_path" &
     llm_pid=$!
   fi
   printf '%s\n' "$llm_pid" >"$pid_path"
@@ -125,7 +130,7 @@ fi
 if [[ "$provider" == ollama ]]; then
   command -v ollama >/dev/null 2>&1 || { echo 'The configured ollama provider requires the ollama CLI.' >&2; exit 1; }
   if ! ollama show "$LLM_MODEL" >/dev/null 2>&1; then
-    if [[ "${LLM_AUTOSTART,,}" == true ]]; then
+    if [[ "$autostart" == true ]]; then
       ollama pull "$LLM_MODEL"
     else
       echo "Ollama is running, but model '$LLM_MODEL' is not installed. Run 'ollama pull $LLM_MODEL' or set LLM_AUTOSTART=true." >&2
