@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/YukiAssistantDemo/YukiAssistantDemo.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/YukiAssistantDemo.Tests/YukiAssistantDemo.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -11,7 +11,9 @@ services:
       timeout: 5s
       retries: 15
     volumes:
-      - yuki-postgres-data:/var/lib/postgresql/data
+      # PostgreSQL 18 requires the parent mount so its major-version data
+      # directory can be selected by the official image entrypoint.
+      - yuki-postgres-data:/var/lib/postgresql
 
   db-init:
     image: postgres:18-alpine
