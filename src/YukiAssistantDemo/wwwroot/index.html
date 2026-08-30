@@ -3,12 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Yuki Assistant V1 local grounded-data demo">
   <title>Yuki Assistant V1</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <main>
-    <h1>Yuki Assistant V1</h1>
-    <p>The local application is running.</p>
+  <main class="app-shell">
+    <section class="chat-card" aria-labelledby="page-title">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">LOCAL DEMO · NL ADMINISTRATION</p>
+          <h1 id="page-title">Yuki Assistant</h1>
+          <p class="intro">Ask about processing status, VAT attention items, or supplier spend.</p>
+        </div>
+        <span class="status-pill"><span class="status-dot" aria-hidden="true"></span>Read-only</span>
+      </header>
+      <div id="conversation" class="conversation" aria-live="polite" aria-label="Conversation">
+        <div id="welcome" class="welcome-state">
+          <p class="welcome-title">What would you like to check?</p>
+          <p class="welcome-copy">Choose an example or write your own version of one of the supported questions.</p>
+          <div class="example-list" aria-label="Example questions">
+            <button class="example-chip" type="button" data-question="Has last month been processed?">Has last month been processed?</button>
+            <button class="example-chip" type="button" data-question="What am I still missing for VAT?">What am I still missing for VAT?</button>
+            <button class="example-chip" type="button" data-question="How much did I spend on suppliers this quarter?">How much did I spend on suppliers this quarter?</button>
+          </div>
+        </div>
+      </div>
+      <form id="chat-form" class="composer" novalidate>
+        <label class="sr-only" for="message-input">Your question</label>
+        <input id="message-input" name="message" type="text" autocomplete="off" placeholder="Ask one of the supported questions…" maxlength="500" required>
+        <button id="send-button" type="submit">Send <span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="footer-note">Answers are grounded in the local demo data and include their source evidence.</p>
+    </section>
   </main>
+  <script src="/app.js" defer></script>
 </body>
 </html>

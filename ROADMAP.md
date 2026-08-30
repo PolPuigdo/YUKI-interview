@@ -273,7 +273,7 @@ If the router is uncertain, no data tool executes.
 
 ## M05 — Minimal chat UI
 
-**Status:** TODO
+**Status:** DONE
 
 ### Goal
 
@@ -312,6 +312,13 @@ The UI:
 - authentication UI;
 - feedback persistence;
 - elaborate animations/design system.
+
+### Evidence
+
+- Replaced the static landing page with a responsive vanilla HTML/CSS/JavaScript chat UI served directly by ASP.NET Core.
+- The UI sends only `{ "message": "..." }` to `POST /api/chat`, exposes the three supported example questions, and renders user/assistant messages, loading state and safe network/API errors.
+- Successful responses show answer prose separately from evidence summary, source IDs, freshness and the optional intent label; no tenant or administration controls are exposed.
+- Added an integration smoke test proving the page, stylesheet and script are served without a Node/npm runtime.
 
 ---
 

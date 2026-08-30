@@ -47,12 +47,12 @@ services:
       DEMO_ADMINISTRATION_ID: ${DEMO_ADMINISTRATION_ID:-northstar-bikes-nl}
       DEMO_MARKET: ${DEMO_MARKET:-NL}
       DEMO_CURRENCY: ${DEMO_CURRENCY:-EUR}
-      ConnectionStrings__YukiDemo: Host=db;Port=5432;Database=${POSTGRES_DB:-yuki_demo};Username=${POSTGRES_USER:-yuki};Password=${POSTGRES_PASSWORD:-yuki_local_only}
+      ConnectionStrings__YukiDemo: ${ConnectionStrings__YukiDemo:-Host=db;Port=5432;Database=${POSTGRES_DB:-yuki_demo};Username=${POSTGRES_USER:-yuki};Password=${POSTGRES_PASSWORD:-yuki_local_only}}
       LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
       LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434/v1}
       LLM_MODEL: ${LLM_MODEL:-qwen3.5:4b}
       LLM_API_KEY: ${LLM_API_KEY:-local-not-used}
-      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
       ROUTER_CONFIDENCE_THRESHOLD: ${ROUTER_CONFIDENCE_THRESHOLD:-0.70}
     extra_hosts:
       - "host.docker.internal:host-gateway"

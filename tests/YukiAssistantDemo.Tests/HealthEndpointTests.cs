@@ -24,5 +24,23 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal("healthy", body.Status);
     }
 
+    [Fact]
+    public async Task Static_chat_ui_and_assets_are_served()
+    {
+        using var page = await _client.GetAsync("/");
+        var html = await page.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("/styles.css", html);
+        Assert.Contains("/app.js", html);
+        Assert.Contains("data-question", html);
+
+        using var styles = await _client.GetAsync("/styles.css");
+        using var script = await _client.GetAsync("/app.js");
+
+        Assert.Equal(HttpStatusCode.OK, styles.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, script.StatusCode);
+    }
+
     private sealed record HealthResponse(string Status);
 }

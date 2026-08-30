@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.runtime
+**/bin/
+**/obj/
+**/.vs/
+**/TestResults/
+README.md
+ROADMAP.md
+docs/
+tests/
