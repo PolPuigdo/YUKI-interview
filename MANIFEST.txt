@@ -1,0 +1,11 @@
+AGENTS.md
+README.md
+ROADMAP.md
+docs/ARCHITECTURE.md
+docs/DECISIONS.md
+docs/DOMAIN_DATA.md
+docs/LLM_CONTRACT.md
+docs/PRODUCT_SCOPE.md
+docs/REFERENCES.md
+docs/RUNTIME_DEV.md
+docs/TRUST_TESTING.md
