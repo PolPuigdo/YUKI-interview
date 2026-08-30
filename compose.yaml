@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-yuki_demo}
+      POSTGRES_USER: ${POSTGRES_USER:-yuki}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yuki_local_only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    volumes:
+      - yuki-postgres-data:/var/lib/postgresql/data
+
+  db-init:
+    image: postgres:18-alpine
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-yuki_demo}
+      PGUSER: ${POSTGRES_USER:-yuki}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-yuki_local_only}
+    volumes:
+      - ./db:/scripts:ro
+    entrypoint: ["sh", "-c"]
+    command: ["psql -v ON_ERROR_STOP=1 -f /scripts/001_schema.sql && psql -v ON_ERROR_STOP=1 -f /scripts/002_seed.sql"]
+
+  app:
+    build:
+      context: .
+      dockerfile: src/YukiAssistantDemo/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:8080
+      DEMO_TENANT_ID: ${DEMO_TENANT_ID:-demo-tenant}
+      DEMO_ADMINISTRATION_ID: ${DEMO_ADMINISTRATION_ID:-northstar-bikes-nl}
+      DEMO_MARKET: ${DEMO_MARKET:-NL}
+      DEMO_CURRENCY: ${DEMO_CURRENCY:-EUR}
+      ConnectionStrings__YukiDemo: Host=db;Port=5432;Database=${POSTGRES_DB:-yuki_demo};Username=${POSTGRES_USER:-yuki};Password=${POSTGRES_PASSWORD:-yuki_local_only}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-qwen3.5:4b}
+      LLM_API_KEY: ${LLM_API_KEY:-local-not-used}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      ROUTER_CONFIDENCE_THRESHOLD: ${ROUTER_CONFIDENCE_THRESHOLD:-0.70}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${APP_PORT:-8088}:8080"
+
+volumes:
+  yuki-postgres-data:

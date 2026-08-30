@@ -1,0 +1,67 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# .NET build output and local tooling
+[Bb]in/
+[Oo]bj/
+.vs/
+TestResults/
+BenchmarkDotNet.Artifacts/
+artifacts/
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+*.csproj.user
+
+# Test and coverage output
+coverage/
+Coverage/
+*.coverage
+*.coveragexml
+*.opencover.xml
+*.trx
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+secrets/
+
+# Local runtime state created by start/stop scripts
+.runtime/
+
+# Docker and local database artifacts
+docker-compose.override.yml
+docker-compose.local.yml
+*.dump
+*.sql.gz
+postgres-data/
+db-data/
+
+# Local model downloads/caches and generated evaluation output
+.models/
+models/
+model-cache/
+eval-results/
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+
