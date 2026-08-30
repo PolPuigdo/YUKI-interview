@@ -54,6 +54,17 @@ endpoint_ready() {
   curl -fsS --max-time 3 "${check_base%/}/models" >/dev/null 2>&1
 }
 
+tracked_process_matches() {
+  [[ -f "$pid_path" && -f "$owner_path" ]] || return 1
+  tracked_pid="$(head -n 1 "$pid_path" || true)"
+  owner="$(head -n 1 "$owner_path" || true)"
+  [[ "$tracked_pid" =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$tracked_pid" >/dev/null 2>&1 || return 1
+  command_line="$(ps -p "$tracked_pid" -o args= 2>/dev/null || true)"
+  { [[ "$owner" == ollama && "$command_line" == *'ollama serve'* ]]; } ||
+    { [[ "$owner" == mlx && "$command_line" == *'mlx_lm.server'* ]]; }
+}
+
 wait_endpoint() {
   local check_base="${1//host.docker.internal/localhost}"
   local description="$2"
@@ -87,8 +98,7 @@ if ! endpoint_ready; then
   printf '%s\n' "$provider" >"$owner_path"
   wait_endpoint "$LLM_BASE_URL" "The $provider endpoint"
 elif [[ -f "$pid_path" ]]; then
-  tracked_pid="$(head -n 1 "$pid_path" || true)"
-  if [[ -z "$tracked_pid" || ! "$tracked_pid" =~ ^[0-9]+$ || ! -e "/proc/$tracked_pid" ]]; then
+  if ! tracked_process_matches; then
     rm -f "$pid_path" "$owner_path"
   fi
 fi

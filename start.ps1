@@ -33,6 +33,19 @@ function Test-Endpoint([string]$baseUrl, [string]$path = '/models') {
     } catch { return $false }
 }
 
+function Test-TrackedProcess([string]$pidPath, [string]$ownerPath) {
+    if (-not (Test-Path -LiteralPath $pidPath)) { return $false }
+    $trackedPid = 0
+    if (-not [int]::TryParse((Get-Content -LiteralPath $pidPath -TotalCount 1), [ref]$trackedPid)) { return $false }
+    if ($trackedPid -le 0) { return $false }
+    $owner = if (Test-Path -LiteralPath $ownerPath) { (Get-Content -LiteralPath $ownerPath -TotalCount 1).Trim().ToLowerInvariant() } else { '' }
+    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $trackedPid" -ErrorAction SilentlyContinue
+    if (-not $processInfo) { return $false }
+    $commandLine = $processInfo.CommandLine
+    return ($owner -eq 'ollama' -and $commandLine -match 'ollama(\.exe)?\s+serve') -or
+        ($owner -eq 'mlx' -and $commandLine -match 'mlx_lm\.server')
+}
+
 function Wait-Endpoint([string]$baseUrl, [string]$description, [string]$path = '/models', [int]$attempts = 30) {
     for ($attempt = 1; $attempt -le $attempts; $attempt++) {
         if (Test-Endpoint $baseUrl $path) { return }
@@ -95,8 +108,7 @@ if (-not (Test-Endpoint $env:LLM_BASE_URL)) {
     Set-Content -LiteralPath $ownerPath -Value $provider
     Wait-Endpoint $env:LLM_BASE_URL "The $provider endpoint"
 } elseif (Test-Path -LiteralPath $pidPath) {
-    $trackedPid = [int](Get-Content -LiteralPath $pidPath -TotalCount 1)
-    try { Get-Process -Id $trackedPid -ErrorAction Stop | Out-Null } catch {
+    if (-not (Test-TrackedProcess $pidPath $ownerPath)) {
         Remove-Item -LiteralPath $pidPath, $ownerPath -Force -ErrorAction SilentlyContinue
     }
 }

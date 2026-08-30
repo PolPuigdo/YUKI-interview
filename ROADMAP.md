@@ -267,7 +267,7 @@ If the router is uncertain, no data tool executes.
 - Added `POST /api/chat`; its request contains only `message`, and successful responses separate `answer`, `intent`, `evidence`, source IDs and freshness.
 - Low-confidence, unsupported, malformed-router and unavailable-LLM routes execute no business tool; missing data and database failures return safe responses.
 - Added renderer, date-resolution and fake-router API tests. `dotnet test YukiAssistantDemo.slnx -nologo` passes 14 tests.
-- Real PostgreSQL/bootstrap verification remains an environment-dependent integration check for M07; Docker Engine was unavailable during this implementation.
+- Real PostgreSQL/bootstrap and local Ollama end-to-end verification completed: all three canonical questions returned supported grounded responses with the expected SQL facts and source counts.
 
 ---
 
@@ -324,7 +324,7 @@ The UI:
 
 ## M06 — Docker Compose and cross-platform lifecycle scripts
 
-**Status:** TODO
+**Status:** DONE
 
 ### Goal
 
@@ -372,6 +372,14 @@ App is reachable at the documented localhost URL.
 ### Cross-platform requirement
 
 PowerShell and Bash behavior must be equivalent.
+
+### Evidence
+
+- Added a Docker Compose topology for PostgreSQL 18, idempotent `db-init` and the ASP.NET Core app, with PostgreSQL and application health checks, a persistent named database volume and host access for Ollama/MLX.
+- Added `start.ps1`/`start.sh` to load local configuration, validate Docker and the selected provider, reuse healthy LLM endpoints, optionally launch Ollama/MLX, bootstrap the database and wait for application health at the configured localhost port.
+- Added `stop.ps1`/`stop.sh` to stop Compose services while preserving the database volume and to stop only an LLM process whose PID and command line prove that this project launched it.
+- Added `.dockerignore` and documented lifecycle configuration and manual volume reset behavior in `.env.example` and `README.md`.
+- Validation: `docker compose config` succeeds; PowerShell parsers accept both lifecycle scripts; the .NET test suite remains the required application regression check. Bash execution is environment-dependent on Windows and must be run on a Bash-capable host for cross-platform acceptance.
 
 ---
 
