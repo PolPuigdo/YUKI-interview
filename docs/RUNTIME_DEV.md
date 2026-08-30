@@ -76,6 +76,15 @@ ROUTER_CONFIDENCE_THRESHOLD=0.70
 LLM_AUTOSTART=false
 ```
 
+When `LLM_PROVIDER=ollama` and the base URL/model are unset, the defaults are
+`http://host.docker.internal:11434/v1` and `qwen3.5:4b`. When
+`LLM_PROVIDER=mlx` and the base URL/model are unset, the defaults are
+`http://host.docker.internal:8080/v1` and
+`mlx-community/Qwen3-4B-Instruct-2507-4bit`. The start scripts apply these
+provider-specific defaults before invoking Compose. If `.env.example` is copied
+to `.env`, replace the three LLM values shown in its MLX comment block when
+switching providers.
+
 Secrets are not important for synthetic local data, but do not commit a real credential.
 
 ## `start.*` contract
@@ -295,6 +304,7 @@ Per chat request log:
 
 ```text
 correlation_id
+outcome
 intent
 confidence
 llm_ms
@@ -305,7 +315,10 @@ total_ms
 safe_exit_reason
 ```
 
-Avoid logging whole prompts/results at high verbosity by default.
+The application emits these fields as structured console properties. Successful
+requests use `safe_exit_reason=none`; unsupported, clarification, low-confidence,
+LLM, database and evidence-validation exits use an explicit reason. Avoid
+logging whole prompts/results at high verbosity by default.
 
 ## Cross-platform expectations
 

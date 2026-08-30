@@ -55,6 +55,8 @@ db-data/
 models/
 model-cache/
 eval-results/
+__pycache__/
+*.pyc
 
 # Logs and temporary files
 *.log
@@ -64,4 +66,3 @@ temp/
 *.tmp
 *.swp
 *.swo
-

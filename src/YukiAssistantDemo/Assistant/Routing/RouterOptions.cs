@@ -8,7 +8,7 @@ public sealed class RouterOptions
     public string BaseUrl { get; set; } = "http://host.docker.internal:11434/v1";
     public string Model { get; set; } = "qwen3.5:4b";
     public string ApiKey { get; set; } = "local-not-used";
-    public int TimeoutSeconds { get; set; } = 30;
+    public int TimeoutSeconds { get; set; } = 60;
     public double ConfidenceThreshold { get; set; } = 0.70;
 
     public static RouterOptions FromConfiguration(IConfiguration configuration)

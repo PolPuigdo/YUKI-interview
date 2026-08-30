@@ -47,11 +47,30 @@ runtime_dir="$project_root/.runtime"
 mkdir -p "$runtime_dir"
 pid_path="$runtime_dir/llm.pid"
 owner_path="$runtime_dir/llm.owner"
-log_path="$runtime_dir/llm.log"
+stdout_log_path="$runtime_dir/llm.stdout.log"
+stderr_log_path="$runtime_dir/llm.stderr.log"
+
+endpoint_url() {
+  local base_url="$1"
+  local endpoint_path="$2"
+  local check_base="$base_url"
+  check_base="${check_base/host.docker.internal/localhost}"
+  printf '%s/%s\n' "${check_base%/}" "${endpoint_path#/}"
+}
+
+start_command() {
+  if [[ "$provider" == ollama ]]; then
+    printf 'ollama serve'
+  else
+    mlx_port="${LLM_BASE_URL##*:}"
+    mlx_port="${mlx_port%%/*}"
+    [[ "$mlx_port" =~ ^[0-9]+$ ]] || mlx_port=8080
+    printf 'python3 -m mlx_lm.server --model %s --host 0.0.0.0 --port %s' "$LLM_MODEL" "$mlx_port"
+  fi
+}
 
 endpoint_ready() {
-  local check_base="${LLM_BASE_URL//host.docker.internal/localhost}"
-  curl -fsS --max-time 3 "${check_base%/}/models" >/dev/null 2>&1
+  curl -fsS --max-time 3 "$(endpoint_url "$LLM_BASE_URL" '/models')" >/dev/null 2>&1
 }
 
 tracked_process_matches() {
@@ -66,11 +85,11 @@ tracked_process_matches() {
 }
 
 wait_endpoint() {
-  local check_base="${1//host.docker.internal/localhost}"
+  local base_url="$1"
   local description="$2"
   local endpoint_path="${3:-/models}"
   for _ in $(seq 1 30); do
-    if curl -fsS --max-time 3 "${check_base%/}${endpoint_path}" >/dev/null 2>&1; then return 0; fi
+    if curl -fsS --max-time 3 "$(endpoint_url "$base_url" "$endpoint_path")" >/dev/null 2>&1; then return 0; fi
     sleep 2
   done
   echo "$description did not become ready in time." >&2
@@ -79,19 +98,19 @@ wait_endpoint() {
 
 if ! endpoint_ready; then
   if [[ "${LLM_AUTOSTART,,}" != true ]]; then
-    echo "The $provider endpoint is unavailable. Start it or set LLM_AUTOSTART=true. Expected endpoint: $LLM_BASE_URL" >&2
+    echo "The $provider endpoint is unavailable. Start it with '$(start_command)' or set LLM_AUTOSTART=true. Expected endpoint: $LLM_BASE_URL" >&2
     exit 1
   fi
   if [[ "$provider" == ollama ]]; then
     command -v ollama >/dev/null 2>&1 || { echo 'LLM_AUTOSTART=true requires the ollama CLI.' >&2; exit 1; }
     ollama show "$LLM_MODEL" >/dev/null 2>&1 || ollama pull "$LLM_MODEL"
-    ollama serve >"$log_path" 2>&1 &
+    ollama serve >"$stdout_log_path" 2>"$stderr_log_path" &
     llm_pid=$!
   else
     command -v python3 >/dev/null 2>&1 || { echo 'LLM_AUTOSTART=true for mlx requires python3.' >&2; exit 1; }
     python3 -c 'import mlx_lm' >/dev/null 2>&1 || { echo 'LLM_AUTOSTART=true for mlx requires the mlx-lm package.' >&2; exit 1; }
     mlx_port="$(python3 -c 'from urllib.parse import urlparse; import os; print(urlparse(os.environ["LLM_BASE_URL"]).port or 8080)')"
-    python3 -m mlx_lm.server --model "$LLM_MODEL" --host 0.0.0.0 --port "$mlx_port" >"$log_path" 2>&1 &
+    python3 -m mlx_lm.server --model "$LLM_MODEL" --host 0.0.0.0 --port "$mlx_port" >"$stdout_log_path" 2>"$stderr_log_path" &
     llm_pid=$!
   fi
   printf '%s\n' "$llm_pid" >"$pid_path"

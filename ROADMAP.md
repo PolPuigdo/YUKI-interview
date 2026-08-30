@@ -427,7 +427,7 @@ No LLM-as-judge is needed.
 
 ## M08 — End-to-end demo hardening and completion
 
-**Status:** TODO
+**Status:** DONE
 
 ### Goal
 
@@ -464,3 +464,34 @@ The project is complete only when:
 11. there is no RAG, MCP, autonomous agent, vector DB, cloud dependency or unnecessary microservice.
 
 After M08, stop. New product capabilities belong to a future roadmap, not V1.
+
+### Evidence so far
+
+- Unified provider-aware endpoint checks, actionable start failures and separate
+  runtime stdout/stderr logs in the PowerShell and Bash lifecycle paths. On
+  Windows, PowerShell also resolves the standard Ollama installation path when
+  the CLI is not on `PATH`.
+- Hardened `tools/router_eval.py` with provider-specific Ollama/MLX defaults and
+  explicit invalid-provider handling.
+- Added structured per-request application logging for correlation ID, outcome,
+  intent, confidence, LLM/tool/total timings, tool name, source count and safe
+  exit reason without logging prompts or model responses.
+- Tightened README and runtime/contract/testing documentation, documented MLX
+  setup and preserved PostgreSQL integration as opt-in.
+- `dotnet test YukiAssistantDemo.slnx` passes 33 tests; the PostgreSQL integration
+  project passes 3 tests against PostgreSQL 18 after Compose bootstrap.
+- Compose configuration/build, application health, static UI serving, PowerShell
+  parsing and Git Bash syntax checks pass. The Compose containers were stopped
+  without removing the named PostgreSQL volume.
+- Real Ollama evaluation passes all 14 contract cases: 9 supported canonical/
+  paraphrase routes and 5 unsupported/prompt-injection routes.
+- Real Ollama HTTP smoke tests pass for the three canonical jobs and one
+  representative paraphrase per job, returning deterministic answers, source
+  IDs and freshness. Unsupported and ambiguous requests fail safely; the
+  existing fake-router suite verifies the low-confidence no-tool path.
+- Browser smoke test passes for the static UI, example chip interaction,
+  supplier answer and visible evidence metadata. `stop.ps1` left the
+  pre-existing Ollama processes running.
+- MLX is documented and provider-configurable, but was not executed because
+  this Windows host has no Apple Silicon/MLX runtime; the M08 requirement only
+  requests that path when the corresponding environment is available.

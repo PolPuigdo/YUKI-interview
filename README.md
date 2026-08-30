@@ -16,19 +16,41 @@ Everything else is explicitly out of scope.
 
 ## Quick start
 
-Install Docker Desktop and a local Ollama runtime, then install the configured model once:
+Install Docker Desktop and one local OpenAI-compatible model runtime. Ollama is the
+default path on Windows/Linux:
 
 ```text
 ollama pull qwen3.5:4b
 ```
 
-Start the complete demo from the repository root with `./start.ps1` in PowerShell or `bash ./start.sh` in Bash. The script validates Docker and the LLM, starts PostgreSQL, applies the idempotent schema/seed, builds the ASP.NET app and waits for `/health`. It does not delete the database volume.
+On Apple Silicon, MLX-LM is also supported. Install `mlx-lm`, then configure the
+provider in `.env`:
+
+```text
+LLM_PROVIDER=mlx
+LLM_BASE_URL=http://host.docker.internal:8080/v1
+LLM_MODEL=mlx-community/Qwen3-4B-Instruct-2507-4bit
+```
+
+MLX-LM is a host runtime and is not run in Docker. It is intended for macOS on
+Apple Silicon; use Ollama on Windows and Linux.
+
+Start the complete demo from the repository root with `./start.ps1` in PowerShell
+or `bash ./start.sh` in Bash. The script validates Docker and the configured LLM,
+starts PostgreSQL, applies the idempotent schema/seed, builds the ASP.NET app and
+waits for `/health`. It does not delete the database volume.
 
 When the start command reports that the demo is ready, open <http://localhost:8088> in a browser. The static chat UI exposes the three supported questions as examples and displays each grounded answer together with its source IDs and freshness timestamp.
 
-To let the script pull/start the configured local runtime when it is unavailable, copy `.env.example` to `.env` and set `LLM_AUTOSTART=true`. Otherwise the script prints the exact missing prerequisite command.
+To let the script pull/start the configured local runtime when it is unavailable,
+copy `.env.example` to `.env` and set `LLM_AUTOSTART=true`. Otherwise the script
+prints the exact missing prerequisite command. With `LLM_AUTOSTART=false`, start
+the runtime yourself before running the demo.
 
 Stop with `./stop.ps1` or `bash ./stop.sh`. These commands preserve the PostgreSQL volume and stop only an LLM process recorded as launched by this project.
+
+For a deliberate full database reset, run `docker compose down -v` explicitly and
+then start again. The normal stop command never removes the named database volume.
 
 ## Core principles
 
@@ -163,6 +185,9 @@ The normal suite does not require Docker, PostgreSQL or a local model:
 dotnet test YukiAssistantDemo.slnx
 ```
 
+The solution intentionally keeps the PostgreSQL project opt-in so this command
+remains fast and local-model independent.
+
 For PostgreSQL integration tests, start and bootstrap the database with the test Compose override, then run the integration category:
 
 ```text
@@ -178,4 +203,18 @@ The optional real-model routing evaluation uses only Python's standard library a
 python tools/router_eval.py
 ```
 
-It reads `.env`/environment configuration, supports Ollama and MLX, prints one pass/fail row per contract example, and exits non-zero when a route does not match.
+It reads `.env`/environment configuration, derives provider-specific defaults for
+Ollama and MLX, prints one pass/fail row per contract example, and exits non-zero
+when a route does not match. It does not call the application, execute SQL or run
+in normal CI.
+
+## Troubleshooting
+
+- Docker unavailable: start Docker Desktop and rerun the selected start script.
+- Local LLM unavailable: start Ollama with `ollama serve`, or MLX-LM with
+  `python3 -m mlx_lm.server --model <model> --host 0.0.0.0 --port 8080`.
+- Ollama model missing: run `ollama pull qwen3.5:4b`, or set `LLM_MODEL` to the
+  model installed locally.
+- Port `8088` occupied: set another `APP_PORT` in `.env` and use the printed URL.
+- MLX on unsupported hardware: select `LLM_PROVIDER=ollama` instead; MLX is not
+  containerized or expected on Linux.

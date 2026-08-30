@@ -25,12 +25,41 @@ function Set-Default([string]$name, [string]$value) {
     }
 }
 
+function Resolve-OllamaCommand {
+    $command = Get-Command ollama -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+
+    $candidates = @(
+        (Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'),
+        (Join-Path $env:ProgramFiles 'Ollama\ollama.exe')
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) { return $candidate }
+    }
+    return $null
+}
+
+function Get-EndpointUrl([string]$baseUrl, [string]$path) {
+    $checkBase = $baseUrl.Replace('host.docker.internal', 'localhost').TrimEnd('/')
+    return "$checkBase/$($path.TrimStart('/'))"
+}
+
 function Test-Endpoint([string]$baseUrl, [string]$path = '/models') {
     try {
-        $checkUrl = ($baseUrl -replace 'host\.docker\.internal', 'localhost').TrimEnd('/') + $path
+        $checkUrl = Get-EndpointUrl $baseUrl $path
         Invoke-WebRequest -Uri $checkUrl -UseBasicParsing -TimeoutSec 3 | Out-Null
         return $true
     } catch { return $false }
+}
+
+function Get-StartCommand {
+    if ($provider -eq 'ollama') {
+        if ($ollamaCommand) { return "& '$ollamaCommand' serve" }
+        return 'ollama serve'
+    }
+    $mlxPort = ([Uri]$env:LLM_BASE_URL).Port
+    if ($mlxPort -le 0) { $mlxPort = 8080 }
+    return "python -m mlx_lm.server --model $($env:LLM_MODEL) --host 0.0.0.0 --port $mlxPort"
 }
 
 function Test-TrackedProcess([string]$pidPath, [string]$ownerPath) {
@@ -79,6 +108,7 @@ if ($provider -eq 'mlx') {
     if (-not $configuredBaseUrl) { $env:LLM_BASE_URL = 'http://host.docker.internal:11434/v1' }
     if (-not $configuredModel) { $env:LLM_MODEL = 'qwen3.5:4b' }
 }
+$ollamaCommand = if ($provider -eq 'ollama') { Resolve-OllamaCommand } else { $null }
 $runtimeDir = Join-Path $projectRoot '.runtime'
 New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
 $pidPath = Join-Path $runtimeDir 'llm.pid'
@@ -88,14 +118,14 @@ $stderrLogPath = Join-Path $runtimeDir 'llm.stderr.log'
 
 if (-not (Test-Endpoint $env:LLM_BASE_URL)) {
     if ($env:LLM_AUTOSTART.ToLowerInvariant() -ne 'true') {
-        throw "The $provider endpoint is unavailable. Start it or set LLM_AUTOSTART=true. Expected endpoint: $env:LLM_BASE_URL"
+        throw "The $provider endpoint is unavailable. Start it with '$(Get-StartCommand)' or set LLM_AUTOSTART=true. Expected endpoint: $env:LLM_BASE_URL"
     }
 
     if ($provider -eq 'ollama') {
-        if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) { throw 'LLM_AUTOSTART=true requires the ollama CLI.' }
-        & ollama show $env:LLM_MODEL *> $null
-        if ($LASTEXITCODE -ne 0) { & ollama pull $env:LLM_MODEL }
-        $llmProcess = Start-Process -FilePath 'ollama' -ArgumentList 'serve' -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdoutLogPath -RedirectStandardError $stderrLogPath
+        if (-not $ollamaCommand) { throw 'LLM_AUTOSTART=true requires the ollama CLI.' }
+        & $ollamaCommand show $env:LLM_MODEL *> $null
+        if ($LASTEXITCODE -ne 0) { & $ollamaCommand pull $env:LLM_MODEL }
+        $llmProcess = Start-Process -FilePath $ollamaCommand -ArgumentList 'serve' -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdoutLogPath -RedirectStandardError $stderrLogPath
     } else {
         if (-not (Get-Command python -ErrorAction SilentlyContinue)) { throw 'LLM_AUTOSTART=true for mlx requires python.' }
         & python -c "import mlx_lm" *> $null
@@ -114,11 +144,11 @@ if (-not (Test-Endpoint $env:LLM_BASE_URL)) {
 }
 
 if ($provider -eq 'ollama') {
-    if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) { throw 'The configured ollama provider requires the ollama CLI.' }
-    & ollama show $env:LLM_MODEL *> $null
+    if (-not $ollamaCommand) { throw 'The configured ollama provider requires the ollama CLI.' }
+    & $ollamaCommand show $env:LLM_MODEL *> $null
     if ($LASTEXITCODE -ne 0) {
         if ($env:LLM_AUTOSTART.ToLowerInvariant() -eq 'true') {
-            & ollama pull $env:LLM_MODEL
+            & $ollamaCommand pull $env:LLM_MODEL
         } else {
             throw "Ollama is running, but model '$env:LLM_MODEL' is not installed. Run 'ollama pull $env:LLM_MODEL' or set LLM_AUTOSTART=true."
         }
