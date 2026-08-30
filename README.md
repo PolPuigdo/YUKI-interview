@@ -14,6 +14,22 @@ The assistant supports only three entrepreneur jobs:
 
 Everything else is explicitly out of scope.
 
+## Quick start
+
+Install Docker Desktop and a local Ollama runtime, then install the configured model once:
+
+```text
+ollama pull qwen3.5:4b
+```
+
+Start the complete demo from the repository root with `./start.ps1` in PowerShell or `bash ./start.sh` in Bash. The script validates Docker and the LLM, starts PostgreSQL, applies the idempotent schema/seed, builds the ASP.NET app and waits for `/health`. It does not delete the database volume.
+
+When the start command reports that the demo is ready, open <http://localhost:8088> in a browser. The static chat UI exposes the three supported questions as examples and displays each grounded answer together with its source IDs and freshness timestamp.
+
+To let the script pull/start the configured local runtime when it is unavailable, copy `.env.example` to `.env` and set `LLM_AUTOSTART=true`. Otherwise the script prints the exact missing prerequisite command.
+
+Stop with `./stop.ps1` or `bash ./stop.sh`. These commands preserve the PostgreSQL volume and stop only an LLM process recorded as launched by this project.
+
 ## Core principles
 
 - Read-only.
@@ -138,3 +154,28 @@ Content-Type: application/json
 ```
 
 Successful responses contain `outcome`, `answer`, `intent` and an `evidence` object with facts, source record IDs and freshness. Unsupported, ambiguous and unavailable-model/data cases return explicit safe responses and never fabricate accounting facts.
+
+## Tests and local routing evaluation
+
+The normal suite does not require Docker, PostgreSQL or a local model:
+
+```text
+dotnet test YukiAssistantDemo.slnx
+```
+
+For PostgreSQL integration tests, start and bootstrap the database with the test Compose override, then run the integration category:
+
+```text
+docker compose -f compose.yaml -f compose.test.yaml up -d db
+docker compose -f compose.yaml -f compose.test.yaml run --rm db-init
+$env:YUKI_TEST_CONNECTION='Host=localhost;Port=55432;Database=yuki_demo;Username=yuki;Password=yuki_local_only'
+dotnet test tests/YukiAssistantDemo.IntegrationTests/YukiAssistantDemo.IntegrationTests.csproj
+```
+
+The optional real-model routing evaluation uses only Python's standard library and is never part of normal tests:
+
+```text
+python tools/router_eval.py
+```
+
+It reads `.env`/environment configuration, supports Ollama and MLX, prints one pass/fail row per contract example, and exits non-zero when a route does not match.

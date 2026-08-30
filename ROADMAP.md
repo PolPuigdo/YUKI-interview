@@ -385,7 +385,7 @@ PowerShell and Bash behavior must be equivalent.
 
 ## M07 — Trust, integration tests and local eval set
 
-**Status:** TODO
+**Status:** DONE
 
 ### Goal
 
@@ -413,6 +413,15 @@ Include:
 - local real-model eval can be run manually when Ollama/MLX is available.
 
 No LLM-as-judge is needed.
+
+### Evidence
+
+- Expanded the normal suite to 33 tests covering relative periods, every router intent/period combination, invalid and low-confidence routes, deterministic rendering, API safe exits, unsupported requests and server-owned scope.
+- Added an opt-in PostgreSQL integration test project with three tests against the real Compose bootstrap. It verifies previous-month `PROCESSED`, exactly 4 unresolved VAT items and exactly EUR 12,460.00 net across 8 processed invoices while excluding draft and previous-quarter records.
+- Added `compose.test.yaml` to expose PostgreSQL only for host-run integration tests; the normal Compose topology remains internal-only for the database.
+- Added `tools/router_eval.py`, a standard-library-only manual evaluator for Ollama/MLX that reports expected/actual route, confidence, latency and pass/fail without LLM-as-judge or CI dependency.
+- Documented normal, integration and local-model commands in `README.md` and the evaluator behavior in `docs/TRUST_TESTING.md`.
+- Validation: `dotnet test YukiAssistantDemo.slnx --no-restore` passes 33 tests; the PostgreSQL integration project passes 3 tests against the bootstrapped Compose database.
 
 ---
 

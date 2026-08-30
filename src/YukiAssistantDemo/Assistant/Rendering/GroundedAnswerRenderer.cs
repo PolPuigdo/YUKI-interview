@@ -22,9 +22,11 @@ public sealed class GroundedAnswerRenderer
     {
         if (facts.Status == "PROCESSED" && facts.ProcessedThrough is null)
             throw new InvalidOperationException("Processed status is missing processed-through evidence.");
+        var periodName = facts.Period.Start.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+        var processedThrough = facts.ProcessedThrough;
         return facts.Status == "PROCESSED"
-            ? $"Yes. {facts.Period.Start:MMMM yyyy} is marked as Processed. Processed through {facts.ProcessedThrough:dd MMMM yyyy}."
-            : $"{facts.Period.Start:MMMM yyyy} is marked as {facts.Status}.";
+            ? $"Yes. {periodName} is marked as Processed. Processed through {processedThrough!.Value.ToString("dd MMMM yyyy", CultureInfo.InvariantCulture)}."
+            : $"{periodName} is marked as {facts.Status}.";
     }
 
     private static string RenderVat(VatAttentionFacts facts)

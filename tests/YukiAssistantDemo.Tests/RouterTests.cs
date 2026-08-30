@@ -32,6 +32,27 @@ public sealed class RouterValidatorTests
         Assert.False(_validator.TryValidate("{\"intent\":\"clarify\",\"period\":null,\"confidence\":0.8,\"clarification\":null}", out _, out _));
         Assert.True(_validator.TryValidate("{\"intent\":\"clarify\",\"period\":null,\"confidence\":0.8,\"clarification\":\"Do you mean VAT or supplier spend?\"}", out _, out _));
     }
+
+    [Theory]
+    [InlineData("period_processing_status", "last_month")]
+    [InlineData("vat_missing_items", "current_vat_period")]
+    [InlineData("supplier_spend", "current_quarter")]
+    public void Accepts_each_supported_intent_period_pair(string intent, string period)
+    {
+        var json = $"{{\"intent\":\"{intent}\",\"period\":\"{period}\",\"confidence\":0.9,\"clarification\":null}}";
+
+        Assert.True(_validator.TryValidate(json, out _, out _));
+    }
+
+    [Theory]
+    [InlineData("{\"intent\":\"not_allowed\",\"period\":null,\"confidence\":0.9,\"clarification\":null}")]
+    [InlineData("{\"intent\":\"supplier_spend\",\"period\":\"current_quarter\",\"confidence\":-0.1,\"clarification\":null}")]
+    [InlineData("{\"intent\":\"supplier_spend\",\"period\":\"current_quarter\",\"confidence\":1.1,\"clarification\":null}")]
+    [InlineData("not-json")]
+    public void Rejects_invalid_router_output(string json)
+    {
+        Assert.False(_validator.TryValidate(json, out _, out _));
+    }
 }
 
 public sealed class OpenAiCompatibleLlmRouterTests
